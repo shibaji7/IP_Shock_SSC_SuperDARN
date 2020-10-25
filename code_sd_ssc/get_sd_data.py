@@ -16,10 +16,9 @@ import pandas as pd
 import datetime as dt
 import glob
 import bz2
-import pydarn
+import pydarnio as pydarn
 import configparser
 
-from utils import Skills
 
 config = configparser.ConfigParser()
 config.read("conf.properties")
@@ -175,24 +174,6 @@ class Scan(object):
         self.f, self.nsky = np.mean(f), np.mean(nsky)
         return
 
-    def _estimat_skills(self, v_params=["v", "w_l", "p_l", "slist"], s_params=["bmnum"], verbose=False):
-        """
-        Only used on the median filtered scan data.
-        Estimate skills of the median filterd data
-        """
-        self.skills, labels = {}, {"CONV":[], "KDE":[]}
-        _u = {key: [] for key in v_params + s_params}
-        for b in self.beams:
-            labels["CONV"].extend(getattr(b, "gflg_conv"))
-            labels["KDE"].extend(getattr(b, "gflg_kde"))
-            l = len(getattr(b, "slist"))
-            for p in v_params:
-                _u[p].extend(getattr(b, p))
-            for p in s_params:
-                _u[p].extend([getattr(b, p)]*l)
-        for name in ["CONV","KDE"]:
-            self.skills[name] = Skills(pd.DataFrame.from_records(_u).values, np.array(labels[name]), name, verbose=verbose)
-        return
 
 
 class FetchData(object):
@@ -214,7 +195,8 @@ class FetchData(object):
         self.date_range = date_range
         self.files = files
         self.verbose = verbose
-        if (rad is not None) and (date_range is not None) and (len(date_range) == 2):
+        if ((rad is not None) and (date_range is not None) and (len(date_range) == 2)) and\
+                (files is None and len(files)==0):
             self._create_files()
         return
 
@@ -274,7 +256,7 @@ class FetchData(object):
         return _b, _s
 
     def convert_to_pandas(self, beams, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", "time"],
-            v_params=["pwr0", "v", "w_l", "gflg", "p_l", "slist", "v_e", "gflg_conv", "gflg_kde"]):
+            v_params=["v", "w_l", "p_l", "slist"]):
         """
         Convert the beam data into dataframe
         """
